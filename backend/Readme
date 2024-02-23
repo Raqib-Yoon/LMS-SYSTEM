@@ -1,0 +1,54 @@
+#api link: https://codeblu-backend.onrender.com/
+#api with prefix: https://codeblu-backend.onrender.com/api/v1/courses
+
+# Upload files using cloudinary and multer;
+
+1. create a multer middleware and pass the multer function in the routes just before the controller function.
+2. setup a cloudinary config in the server.js
+3. create a datauri function in the utils. for the getting the uri data of file
+
+you will getting the output from the req.file is like this and you will pass this to the datauri function 
+
+{
+  fieldname: 'file',
+  originalname: 'WhatsApp Image 2023-11-14 at 9.25.40 PM.jpeg',
+  encoding: '7bit',
+  mimetype: 'image/jpeg',
+  buffer: <Buffer ff d8 ff e0 00 10 4a 46 49 46 00 01 01 00 00 01 00 01 00 00 ff db 00 43 00 06 04 05 06 05 04 06 06 05 06 07 07 06 08 0a 10 0a 0a 09 09 0a 14 0e 0f 0c ... 537110 more bytes>,
+  size: 537160
+}
+
+# Razorpay Integration 
+
+1. firstly you can go to the Razorpay site and login then get a api key and secret from accounts and settings and 
+then create a plan in subscriptions tab in plans 
+2. secondly you can go to the razorpay dev website and go to the developer tools > server side sdks > know more > Node.js > Build integration 
+3. create a instance in the server.js > make a payment route > payment controller
+4. now at the razorpay dev go the subscription tab  > subscription apis > create a subscription. and you will see here plan id and total cound is mandatory fields.
+
+5. after hiting the subscribe api then we can hit the payment verification api 
+so in razor pay there will be two methods handler function and callback url. you can check it out by following :-
+razorpay dev website > devtools > sample apps > js docs > integration steps > build integration and here you can check handler function or callback url
+
+6. and here we are hiting our paymentverification api by callback url. 
+
+Note: if we use handler function then it will give these three
+        alert(response.razorpay_payment_id);
+        alert(response.razorpay_order_id); //order ki jgha hame subscription_id milegi
+        alert(response.razorpay_signature);
+
+        but we are using the callback url so in this urls controller we can get these from the req.body vo razorpay khud hi bhejga
+
+7. verify these above three. webpage in point no. 5 gives how to verify signature so you can checkout from that 
+8. we are creating payments model this will help for refund we can check from created now if it will withing 7 days then we will refund.
+in refund process we need a razorpay key so we can make a small functino and route for it
+
+
+# DashBoard Stats api 
+
+1. create a model for saving stats
+2. set a cronjob in server.js who will runs every months first day on 00:00 am and create a empty document in db for that month;
+3. Now add watcher in the user controller it will change the stats in the db when ever change in the user model and it will update the real time users count, subscribers count in the db for that particular month
+4. for real time view count create a watcher in the course controller.
+5. make a controller for dashboard stats api in the others controller.
+
