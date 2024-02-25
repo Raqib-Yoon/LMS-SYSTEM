@@ -1,45 +1,56 @@
 import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
-import { Course } from "../models/Course.js";
-import { Stats } from "../models/Stats.js";
+import Course from "../models/Course.js";
+// import { Stats } from "../models/Stats.js";
 import getDataUri from "../utils/dataUri.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import cloudinary from "cloudinary";
 
 export const getAllCourses = catchAsyncErrors(async (req, res, next) => {
-  const keyword = req.query.keyword || ""
-  const category = req.query.category || ""
+  let productQuery = Product.find();
+  if (req.query.name) {
+    productQuery = productQuery.find({
+      name: { $regex: req.query.name, $options: "i" },
+    });
+  }
+  if (req.query.color) {
+    productQuery = productQuery.find({
+      colors: { $regex: req.query.color, $options: "i" },
+    });
+  }
+  // const keyword = req.query.keyword || "";
+  // const category = req.query.category || "";
 
-  const allCourses = await Course.find({
-    title: {
-      $regex: keyword,
-      $options: "i" //for case insensitive
-    },
-    category: {
-      $regex: category,
-      $options: "i"
-    }
-  }).select("-lectures"); //we dont need lectures array when we are fetching courses lectures for the subscription users only
+  // const allCourses = await Course.find({
+  //   title: {
+  //     $regex: keyword,
+  //     $options: "i", //for case insensitive
+  //   },
+  //   category: {
+  //     $regex: category,
+  //     $options: "i",
+  //   },
+  // }).select("-lectures"); //we dont need lectures array when we are fetching courses lectures for the subscription users only
 
-  res.status(200).json({
-    success: true,
-    allCourses,
-  });
+  // res.status(200).json({
+  //   success: true,
+  //   allCourses,
+  // });
 });
 
 export const createCourse = catchAsyncErrors(async (req, res, next) => {
   const { title, description, category, createdBy } = req.body;
 
-  if (!title || !description || !category || !createdBy)
+  if (!title || !description || !category || !createdBy) {
     return next(new ErrorHandler("Please add all fields", 400));
+  }
 
-    
   const file = req.file; //we can get a file as a blob here so then we can convert it as a datauri
- // console.log(file)
+  // console.log(file)
 
-  const fileUri = getDataUri(file)
+  const fileUri = getDataUri(file);
   //console.log(fileUri.content)
 
-  const myCloud = await cloudinary.v2.uploader.upload(fileUri.content)
+  const myCloud = await cloudinary.v2.uploader.upload(fileUri.content);
 
   await Course.create({
     title,
@@ -60,7 +71,9 @@ export const createCourse = catchAsyncErrors(async (req, res, next) => {
 
 export const getCourseLectures = catchAsyncErrors(async (req, res, next) => {
   const course = await Course.findById(req.params.id);
-  if (!course) return next(new ErrorHandler("Invalid course id", 404));
+  if (!course) {
+    return next(new ErrorHandler("Invalid course id", 404));
+  }
 
   course.views += 1;
   await course.save();
@@ -71,12 +84,9 @@ export const getCourseLectures = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-
-
 export const addLecture = catchAsyncErrors(async (req, res, next) => {
-
-  const {id} = req.params
-  const {title, description} = req.body;
+  const { id } = req.params;
+  const { title, description } = req.body;
 
   const course = await Course.findById(id);
   if (!course) return next(new ErrorHandler("Invalid course id", 404));
@@ -84,12 +94,12 @@ export const addLecture = catchAsyncErrors(async (req, res, next) => {
   //upload file on cloudinary
 
   const file = req.file; //we can get a file as a blob here so then we can convert it as a datauri
- 
-   const fileUri = getDataUri(file)
- 
-   const myCloud = await cloudinary.v2.uploader.upload(fileUri.content, {
-    resource_type: "video"
-   })
+
+  const fileUri = getDataUri(file);
+
+  const myCloud = await cloudinary.v2.uploader.upload(fileUri.content, {
+    resource_type: "video",
+  });
 
   course.lectures.push({
     title,
@@ -110,12 +120,11 @@ export const addLecture = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-
 export const deleteCourse = catchAsyncErrors(async (req, res, next) => {
-  const {id} = req.params;
+  const { id } = req.params;
 
   const course = await Course.findById(id);
-  if(!course) return next(new Error('Course not found', 404));
+  if (!course) return next(new Error("Course not found", 404));
 
   await cloudinary.v2.uploader.destroy(course.poster.public_id);
 
@@ -123,8 +132,8 @@ export const deleteCourse = catchAsyncErrors(async (req, res, next) => {
     const singleLecture = course.lectures[i];
 
     await cloudinary.v2.uploader.destroy(singleLecture.video.public_id, {
-      resource_type: "video"
-    })
+      resource_type: "video",
+    });
   }
 
   await course.deleteOne();
@@ -135,53 +144,49 @@ export const deleteCourse = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-
 export const deleteLecture = catchAsyncErrors(async (req, res, next) => {
-  const {courseId, lectureId} = req.query;
+  const { courseId, lectureId } = req.query;
 
   const course = await Course.findById(courseId);
-  if(!course) return next(new Error('Course not found', 404));
+  if (!course) return next(new Error("Course not found", 404));
 
-  const lecture = course.lectures.find(item => {
-    if(item._id.toString() === lectureId.toString()) return item
-  })
-
-  if(!lecture) return next(new ErrorHandler("Lecture not found", 404));
-  
-  await cloudinary.v2.uploader.destroy(lecture.video.public_id, {
-    resource_type: 'video'
+  const lecture = course.lectures.find((item) => {
+    if (item._id.toString() === lectureId.toString()) return item;
   });
 
-  course.lectures = course.lectures.filter(item =>{
-    if(item._id.toString() !== lectureId.toString()) return item
-  })
+  if (!lecture) return next(new ErrorHandler("Lecture not found", 404));
+
+  await cloudinary.v2.uploader.destroy(lecture.video.public_id, {
+    resource_type: "video",
+  });
+
+  course.lectures = course.lectures.filter((item) => {
+    if (item._id.toString() !== lectureId.toString()) return item;
+  });
 
   course.numOfVideos = course.lectures.length;
 
   await course.save();
-  
 
-  
   res.status(200).json({
     success: true,
     message: "Lecture deleted successfully.",
   });
 });
 
-Course.watch().on("change", async()=>{
-  const stat = await Stats.find({}).sort({ createdAt: "desc" }).limit(1);
+// Course.watch().on("change", async () => {
+//   const stat = await Stats?.find({}).sort({ createdAt: "desc" }).limit(1);
 
-  const allCourses = await Course.find({});
+//   const allCourses = await Course.find({});
 
-  let totalViews = 0;
+//   let totalViews = 0;
 
-  for (let i = 0; i < allCourses.length; i++) {
-    totalViews += allCourses[i].views;
-    
-  }
+//   for (let i = 0; i < allCourses.length; i++) {
+//     totalViews += allCourses[i].views;
+//   }
 
-  stat[0].views = totalViews;
-  stat[0].createdAt = new Date(Date.now())
+//   stat[0].views = totalViews;
+//   stat[0].createdAt = new Date(Date.now());
 
-  await stat[0].save()
-})
+//   await stat[0].save();
+// });

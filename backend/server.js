@@ -1,10 +1,17 @@
-import app from "./app.js";
-import { connectDB } from "./config/database.js";
-import cloudinary from "cloudinary";
-import nodeCron from "node-cron";
-import { Stats } from "./models/Stats.js";
+// import cloudinary from "cloudinary";
+// import nodeCron from "node-cron";
+// import { Stats } from "./models/Stats.js";
 
-connectDB();
+import app from "./app/app.js";
+
+import http from "http";
+
+const server = http.createServer(app);
+
+const PORT = process.env.PORT;
+server.listen(PORT, () => {
+  console.log(`server running at port ${PORT}`);
+});
 
 // cloudinary.v2.config({
 //     cloud_name: process.env.CLOUD_NAME,
@@ -12,22 +19,10 @@ connectDB();
 //     api_secret: process.env.API_SECRET
 // })
 
-// export const instance = new Razorpay({
-//     key_id: process.env.RAZORPAY_API_KEY,
-//     key_secret: process.env.RAZORPAY_API_SECRET,
-//   });
-
-
-nodeCron.schedule("0 0 0 1 * *", async()=>{ //on every months first day this function will execute
-    try {
-        await Stats.create({});
-    } catch (error) {
-        console.log(error)
-    }
-})
-
-
-
-app.listen(process.env.PORT, ()=>{
-    console.log(`server is working on a port ${process.env.PORT}`)
-})
+// nodeCron.schedule("0 0 0 1 * *", async()=>{ //on every months first day this function will execute
+//     try {
+//         await Stats.create({});
+//     } catch (error) {
+//         console.log(error)
+//     }
+// })

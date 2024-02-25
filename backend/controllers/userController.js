@@ -1,111 +1,135 @@
-import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
-import ErrorHandler from "../utils/errorHandler.js";
-import { User } from "../models/User.js";
-import { Course } from "../models/Course.js";
-import { sendToken } from "../utils/sendToken.js";
+import User from "../models/User.js";
+import Course from "../models/Course.js";
 import { sendEmail } from "../utils/sendEmail.js";
-import crypto from "crypto";
 import cloudinary from "cloudinary";
 import getDataUri from "../utils/dataUri.js";
-import { Stats } from "../models/Stats.js";
+import bCrypt from "bcrypt";
+import generateToken from "../utils/generateToken.js";
+import verifyToken from "../utils/verifyToken.js";
+import getTokenFromHeader from "../utils/getTokenFromHeader.js";
 
-export const register = catchAsyncErrors(async (req, res, next) => {
+// import { Stats } from "../models/Stats.js";
+
+export const register = async (req, res) => {
   const file = req.file;
-
+  console.log(file)
   const { name, email, password } = req.body;
+  //   check if user exist
+  const isUserExist = await User.findOne({ email });
+  if (isUserExist) {
+    return res.status(400).json({
+      error: "User already exists.",
+    });
+  }
 
-  if (!name || !email || !password || !file)
-    return next(new ErrorHandler("Please fill all fields", 400));
-
-  let isUserExist = await User.findOne({ email });
-
-  if (isUserExist) return next(new ErrorHandler("User already exists", 409));
-
-  const fileUri = getDataUri(file);
+  // const fileUri = getDataUri(file);
   //upload file on cloudinary
-  const myCloud = await cloudinary.v2.uploader.upload(fileUri.content);
+  // const myCloud = await cloudinary.v2.uploader.upload(fileUri.content);
 
-  const user = await User.create({
+  //   hash the passwords
+  const salt = await bCrypt.genSalt(10);
+  const hashPassword = await bCrypt.hash(password, salt);
+  // save the user
+
+  const newUser = await User.create({
     name,
     email,
-    password,
-    avatar: {
-      public_id: myCloud.public_id,
-      url: myCloud.secure_url,
-    },
+    password: hashPassword,
+
+    // avatar: {
+    //   public_id: myCloud.public_id,
+    //   url: myCloud.secure_url,
+    // },
   });
+  return res.status(201).json({
+    user: newUser,
+    message: "User Registered Successfull",
+  });
+};
 
-  sendToken(res, user, "Registered Successfully", 201);
-});
+// login
 
-export const login = catchAsyncErrors(async (req, res, next) => {
+export const login = async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password)
-    return next(new ErrorHandler("Please fill all fields", 400));
-
-  let isUserExist = await User.findOne({ email }).select("+password");
-
-  if (!isUserExist)
-    return next(new ErrorHandler("Please register first.", 401));
-
-  const matchPassword = await isUserExist.comparePassword(password);
-
-  if (!matchPassword)
-    return next(new ErrorHandler("Incorrect email or password", 401));
-
-  sendToken(res, isUserExist, `Welcome back, ${isUserExist.name}`, 201);
-});
-
-export const logout = catchAsyncErrors(async (req, res, next) => {
-  res
-    .status(200)
-    .cookie("token", null, {
-      expires: new Date(Date.now()),
-      secure: true,
-      sameSite: "none",
-      httpOnly: true,
-    })
-    .json({
-      success: true,
-      message: "Logged out successfully.",
+  console.log(req.body);
+  // check if user is register in our database
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(400).json({
+      error: "Invalid login details",
     });
-});
+  }
+  // check if passwords match
 
-export const getMyProfile = catchAsyncErrors(async (req, res, next) => {
-  res.status(200).json({
-    success: true,
-    user: req.user,
+  const isMatch = await bCrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(400).json({
+      error: "Email and password do not match",
+    });
+  }
+
+  user.password = undefined;
+  res.json({
+    user,
+    token: generateToken(user._id),
+    message: "Successfull login",
   });
-});
+};
 
-export const changePassword = catchAsyncErrors(async (req, res, next) => {
+export const logout = async (req, res) => {};
+
+export const getMyProfile = async (req, res) => {
+  const token = getTokenFromHeader(req);
+  console.log(token);
+  const userId = verifyToken(token);
+  console.log(userId);
+
+  const user = await User.findById(userId.id).select({
+    password: 0,
+  });
+  if (!user) {
+    return res.status(400).json({
+      error: "User not found.",
+    });
+  }
+  res.json({ user, message: "user profile" });
+};
+
+export const changePassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
-  if (!oldPassword || !newPassword)
-    return next(new ErrorHandler("Please fill all fields", 400));
-
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ error: "Please fill all fields" });
+  }
   const user = await User.findById(req.user._id).select("+password");
 
-  const oldPasswordMatch = await user.comparePassword(oldPassword);
+  const oldPasswordMatch = await bCrypt.compare(oldPassword, user.password);
 
-  if (!oldPasswordMatch)
-    return next(new ErrorHandler("Incorrect old password", 400));
-
+  if (!oldPasswordMatch) {
+    return res.status(400).json({
+      error: "Incorrect old password",
+    });
+  }
   user.password = newPassword;
-
   await user.save();
-
   res.status(200).json({
     success: true,
     message: "Password changed successfully",
   });
-});
+};
 
-export const updateProfile = catchAsyncErrors(async (req, res, next) => {
+export const updateProfile = async (req, res) => {
   const { name, email } = req.body;
 
-  const user = await User.findById(req.user._id);
+  const isUserExist = await User.findOne({ email });
+
+  if (isUserExist) {
+    return res.status(400).json({
+      error: "You can't use this email",
+    });
+  }
+
+  const user = await User.findById(req.userAuthId);
 
   if (name) user.name = name;
   if (email) user.email = email;
@@ -115,14 +139,19 @@ export const updateProfile = catchAsyncErrors(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Profile updated successfully",
+    user,
   });
-});
+};
 
-export const updateProfilePicture = catchAsyncErrors(async (req, res, next) => {
+export const updateProfilePicture = async (req, res) => {
   const file = req.file;
-  if (!file) return next(new ErrorHandler("Please fill all fields", 400));
+  if (!file) {
+    return res.status(400).json({
+      message: "Please select an image",
+    });
+  }
 
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.userAuthId);
 
   const fileUri = getDataUri(file);
   //upload file on cloudinary
@@ -134,74 +163,71 @@ export const updateProfilePicture = catchAsyncErrors(async (req, res, next) => {
     public_id: myCloud.public_id,
     url: myCloud.secure_url,
   };
-
   await user.save();
-
   res.status(200).json({
     success: true,
     message: "Profile picture updated successfully",
   });
-});
+};
 
-export const forgetPassword = catchAsyncErrors(async (req, res, next) => {
+export const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
 
-  if (!user) return next(new ErrorHandler("User not found", 400));
-
-  const resetToken = await user.getResetToken();
-
+  if (!user) {
+    return res.status(400).json({
+      error: "User not found",
+    });
+  }
+  const newToken = await user.generateToken(user._id);
   await user.save();
 
   //send token via email
-  const url = `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`;
+  const url = `${process.env.FRONTEND_URL}/resetpassword/${newToken}`;
 
   const message = `Click on the link to reset your password. ${url}. If you have not requested then please ignore`;
 
-  await sendEmail(user.email, "CodeBlu Reset Password", message);
+  await sendEmail(user.email, "Reset Password", message);
 
   res.status(200).json({
     success: true,
     message:
       "If your email address exists in our database, you will receive a password recovery link at your email address in a few minutes.",
   });
-});
+};
 
-export const resetPassword = catchAsyncErrors(async (req, res, next) => {
+export const resetPassword = async (req, res) => {
   const { token } = req.params;
+  const id = verifyToken(token);
 
-  const resetPasswordToken = crypto
-    .createHash("sha256")
-    .update(token)
-    .digest("hex");
+  const foundUser = await User.findById(id);
 
-  const user = await User.findOne({
-    resetPasswordToken,
-    resetPasswordExpire: {
-      $gt: Date.now(),
-    },
-  });
+  if (!foundUser) {
+    return res.status(400).json({
+      error: "Token is invalid or has been expired",
+    });
+  }
 
-  if (!user)
-    return next(new ErrorHandler("Token is invalid or has been expired", 403));
-
-  user.password = req.body.password;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpire = undefined;
-
-  await user.save();
+  const salt = bCrypt.genSalt(12);
+  const hashPassword = await bCrypt.hash(req.body.password, salt);
+  foundUser.password = hashPassword;
+  await foundUser.save();
 
   res.status(200).json({
     success: true,
     message: "Password changed successfully",
   });
-});
+};
 
-export const addToPlaylist = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.user._id);
+export const addToPlaylist = async (req, res) => {
+  const user = await User.findById(req.userAuthId);
   const course = await Course.findById(req.body.id);
-  if (!course) return next(new ErrorHandler("Invalid course id", 404));
+  if (!course) {
+    return res.status(400).json({
+      error: "Invalid course id",
+    });
+  }
 
   const itemAlreadyExists = user.playlist.find((item) => {
     if (item.course.toString() === course._id.toString()) {
@@ -209,25 +235,32 @@ export const addToPlaylist = catchAsyncErrors(async (req, res, next) => {
     }
   });
 
-  if (itemAlreadyExists) return next(new ErrorHandler("Already added", 409));
+  if (itemAlreadyExists) {
+    return res.status(400).json({
+      error: "Course already added to playlist",
+    });
+  }
 
   user.playlist.push({
     course: course._id,
     poster: course.poster.url,
   });
-
   await user.save();
 
   res.status(200).json({
     success: true,
     message: "Added to playlist",
   });
-});
+};
 
-export const removeFromPlaylist = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.user._id);
+export const removeFromPlaylist = async (req, res) => {
+  const user = await User.findById(req.userAuthId);
   const course = await Course.findById(req.query.id);
-  if (!course) return next(new ErrorHandler("Invalid course id", 404));
+  if (!course) {
+    return res.status(400).json({
+      error: "Invalid course id",
+    });
+  }
 
   const newPlaylist = user.playlist.filter((item) => {
     if (item.course.toString() !== course._id.toString()) return item;
@@ -239,26 +272,27 @@ export const removeFromPlaylist = catchAsyncErrors(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: "Removed from playlist",
+    message: "Course removed from playlist",
   });
-});
+};
 
-export const getAllUsers = catchAsyncErrors(async (req, res, next) => {
+export const getAllUsers = async (req, res) => {
   const users = await User.find({});
-
   res.status(200).json({
+    users,
     success: true,
     users,
   });
-});
+};
 
-export const updateUserRole = catchAsyncErrors(async (req, res, next) => {
+export const updateUserRole = async (req, res) => {
   const { id } = req.params;
-
   const user = await User.findById(id);
-
-  if (!user) return next(new ErrorHandler("User not found", 404));
-
+  if (!user) {
+    return res.status(400).json({
+      error: "User not found",
+    });
+  }
   if (user.role === "admin") {
     user.role = "user";
   } else {
@@ -268,58 +302,54 @@ export const updateUserRole = catchAsyncErrors(async (req, res, next) => {
   await user.save();
 
   res.status(200).json({
+    user,
     success: true,
     message: "Role updated",
   });
-});
+};
 
-export const deleteUser = catchAsyncErrors(async (req, res, next) => {
+export const deleteUser = async (req, res) => {
   const { id } = req.params;
+  try {
+    const user = await User.findByIdAndDelete(id);
 
-  const user = await User.findById(id);
-  if (!user) return next(new ErrorHandler("User not found", 404));
+    if (!user) throw new Error();
 
+    // await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+    //cancel subscription
+    res.status(200).json({
+      success: true,
+      message: "User deleted successfully",
+      user,
+    });
+  } catch (error) {
+    return res.status(404).json({
+      error: "User not found",
+    });
+  }
+};
+
+export const deleteMyProfile = async (req, res) => {
+  const user = await User.findById(req.userAuthId);
   await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-
   //cancel subscription
-
   await user.deleteOne();
 
   res.status(200).json({
     success: true,
     message: "User deleted successfully",
   });
-});
-
-export const deleteMyProfile = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.user._id);
-
-  await cloudinary.v2.uploader.destroy(user.avatar.public_id);
-
-  //cancel subscription
-
-  await user.deleteOne();
-
-  res
-    .status(200)
-    .cookie("token", null, {
-      expires: new Date(Date.now()),
-    })
-    .json({
-      success: true,
-      message: "User deleted successfully",
-    });
-});
+};
 
 //creating a watcher for stats because of realtime data when ever change in the user model then callback function runs
-User.watch().on("change", async () => {
-  const stat = await Stats.find({}).sort({ createdAt: "desc" }).limit(1);
+// User.watch().on("change", async () => {
+//   const stat = await Stats?.find({}).sort({ createdAt: "desc" }).limit(1);
 
-  const subscribedUsers = await User.find({ "subscription.status": "active" });
+//   const subscribedUsers = await User.find({ "subscription.status": "active" });
 
-  stat[0].users = await User.countDocuments();
-  stat[0].subscriptions = subscribedUsers.length;
-  stat[0].createdAt = new Date(Date.now());
+//   stat[0].users = await User.countDocuments();
+//   stat[0].subscriptions = subscribedUsers.length;
+//   stat[0].createdAt = new Date(Date.now());
 
-  await stat[0].save();
-});
+//   await stat[0].save();
+// });
