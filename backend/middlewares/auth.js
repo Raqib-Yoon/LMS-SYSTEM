@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { User } from "../models/User.js";
+import User from "../models/User.js";
 import { catchAsyncErrors } from "./catchAsyncErrors.js";
 import ErrorHandler from "../utils/errorHandler.js";
 
@@ -26,14 +26,10 @@ export const authorizeAdmin = catchAsyncErrors(async (req, res, next) => {
   next();
 });
 
-
 export const authorizeSubscribers = catchAsyncErrors(async (req, res, next) => {
   if (req.user.subscription.status !== "active" && req.user.role !== "admin")
     return next(
-      new ErrorHandler(
-        `Only subscribers can access this resource.`,
-        403
-      )
+      new ErrorHandler(`Only subscribers can access this resource.`, 403)
     );
 
   next();

@@ -3,7 +3,6 @@ import { styled } from '@mui/material/styles';
 // components
 import Page from '../components/Page';
 
-
 // ----------------------------------------------------------------------
 
 const ContentStyle = styled('div')(({ theme }) => ({
@@ -17,10 +16,7 @@ const ContentStyle = styled('div')(({ theme }) => ({
 export default function HomePage() {
   return (
     <Page title="Ecommerce Start Here">
-
-      <ContentStyle>
-        Home Page
-      </ContentStyle>
+      <ContentStyle></ContentStyle>
     </Page>
   );
 }

@@ -1,55 +1,86 @@
 import express from "express";
-import { addToPlaylist, changePassword, deleteMyProfile, deleteUser, forgetPassword, getAllUsers, getMyProfile, login, logout, register, removeFromPlaylist, resetPassword, updateProfile, updateProfilePicture, updateUserRole } from "../controllers/userController.js";
-import { authorizeAdmin, isAuthenticated } from "../middlewares/auth.js";
-import singleUpload from "../middlewares/multer.js";
-
 const router = express.Router();
 
+import {
+  addToPlaylist,
+  changePassword,
+  deleteMyProfile,
+  deleteUser,
+  forgetPassword,
+  getAllUsers,
+  getMyProfile,
+  login,
+  logout,
+  register,
+  removeFromPlaylist,
+  resetPassword,
+  updateProfile,
+  updateProfilePicture,
+  updateUserRole,
+} from "../controllers/userController.js";
+import isAdmin from "../middlewares/isAdmin.js";
+import isLoggedIn from "../middlewares/isLoggedIn.js";
+import {
+  userLoginValidator,
+  userRegisterValidator,
+} from "../validators/validator.js";
+import { runValidation } from "../validators/index.js";
+
+import singleUpload from "../middlewares/multer.js";
+
 //to regiter
-router.route("/register").post(singleUpload ,register)
+router.post(
+  "/users/register",
+  userRegisterValidator,
+  runValidation,
+  singleUpload,
+  register
+);
 
 //to login
-router.route("/login").post(login)
+router.post("/users/login", userLoginValidator, runValidation, login);
 
 //logout
-router.route("/logout").get(isAuthenticated, logout)
+router.get("/users/logout", isLoggedIn, logout);
 
 //get my profile
-router.route("/me").get(isAuthenticated, getMyProfile)
+router.get("/users/profile", isLoggedIn, getMyProfile);
 
 //delete my profile
-router.route("/me").delete(isAuthenticated, deleteMyProfile)
+router.delete("/users/profile", isLoggedIn, deleteMyProfile);
 
 //changePassword
-router.route("/changepassword").put(isAuthenticated, changePassword)
+router.put("/users/changepassword", isLoggedIn, changePassword);
 
 //update profile
-router.route("/updateprofile").put(isAuthenticated, updateProfile)
+router.put("/users/updateprofile", isLoggedIn, updateProfile);
 
 //update profile picture
-router.route("/updateprofilepicture").put(isAuthenticated, singleUpload, updateProfilePicture)
+router.put(
+  "/users/updateprofilepicture",
+  isLoggedIn,
+  singleUpload,
+  updateProfilePicture
+);
 
 //forget password
-router.route("/forgetpassword").post(forgetPassword)
+router.post("/users/forgetpassword", forgetPassword);
 
 //reset password
-router.route("/resetpassword/:token").put(resetPassword)
+router.put("/users/resetpassword/:token", resetPassword);
 
 //add to playlist
-router.route("/addtoplaylist").post(isAuthenticated, addToPlaylist)
+router.post("/users/addtoplaylist", isLoggedIn, addToPlaylist);
 
-//remove from playlist  
-router.route("/removeFromPlaylist").delete(isAuthenticated, removeFromPlaylist)
-
+//remove from playlist
+router.delete("/users/removeFromPlaylist", isLoggedIn, removeFromPlaylist);
 
 ////////////Admin Routes////////////////////
 
-//get all users 
-router.route("/admin/users").get(isAuthenticated, authorizeAdmin, getAllUsers)
-
+//get all users
+router.get("/admin/users", isLoggedIn, isAdmin, getAllUsers);
 //update user role
-router.route("/admin/user/:id").put(isAuthenticated, authorizeAdmin, updateUserRole)
-.delete(isAuthenticated, authorizeAdmin, deleteUser)
+router.put("/admin/user/:id", isLoggedIn, isAdmin, updateUserRole);
+router.delete("/admin/user/:id", isLoggedIn, isAdmin, deleteUser);
 
-
-export default router
+export default router;

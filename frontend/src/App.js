@@ -8,7 +8,6 @@ import Router from './routes';
 // theme
 import ThemeProvider from './theme';
 
-
 // ----------------------------------------------------------------------
 
 export default function App() {
@@ -18,7 +17,7 @@ export default function App() {
         <ThemeSettings>
           <NotistackProvider>
             <ProgressBarStyle />
-          
+
             <ScrollToTop />
             <Router />
           </NotistackProvider>
