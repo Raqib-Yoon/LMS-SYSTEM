@@ -10,7 +10,7 @@ import MainHeader from './MainHeader';
 // ----------------------------------------------------------------------
 
 export default function MainLayout() {
-  const { pathname } = useLocation();
+  const pathname = '/';
 
   const isHome = pathname === '/';
 
