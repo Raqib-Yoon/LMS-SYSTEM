@@ -138,7 +138,7 @@ const CourseDetailPage = () => {
             </Typography>
             <Accordion sx={{ backgroundColor: theme.palette.background.default }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel1-content" id="panel1-header">
-                Day 1 Goals: what we will make by the end of the day
+                Day 1 Goals: what we will make by the end of the days
               </AccordionSummary>
               <AccordionDetails>
                 <Box
