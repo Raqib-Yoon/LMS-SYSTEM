@@ -31,6 +31,7 @@ import { GoDotFill } from 'react-icons/go';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { GiAchievement } from 'react-icons/gi';
 import { GoMilestone, GoStarFill } from 'react-icons/go';
+import useResponsive from '../../hooks/useResponsive';
 
 // show More
 import ShowMoreText from 'react-show-more-text';
@@ -48,6 +49,7 @@ import AvatarAnimation from '../../animation/avatar/avatar.json';
 
 const CourseDetailPage = () => {
   const theme = useTheme();
+  const isMatchExactLargeScreen = useResponsive('down', 'lg');
   // show more
   const [expand, setExpand] = useState(false);
   const onClick = () => {
@@ -262,8 +264,8 @@ const CourseDetailPage = () => {
   };
   return (
     <Page title="Course Details">
-      <Box display="flex" gap={1}>
-        <Container sx={{ width: '70vw', mt: '2rem' }}>
+      <Box display={'flex'} flexDirection={isMatchExactLargeScreen ? 'column-reverse' : 'row'} gap={1}>
+        <Container sx={{ width: isMatchExactLargeScreen ? '100%' : '70vw', mt: '2rem' }}>
           <Paper style={{ padding: '20px', marginTop: '20px' }}>
             {/* Course Title, Description, and Objectives */}
             <Typography variant="h4" gutterBottom>
@@ -740,16 +742,22 @@ const CourseDetailPage = () => {
         </Container>
         <Container>
           <Card
-            sx={{
-              minWidth: 385,
-              position: 'fixed',
-              top: 90,
-              right: 1,
-              zIndex: 1200,
-              border: `2px solid ${theme.palette.divider}`,
-              boxShadow: theme.shadows[20],
-              pb: '2rem',
-            }}
+            sx={
+              !isMatchExactLargeScreen
+                ? {
+                    minWidth: 385,
+                    position: isMatchExactLargeScreen ? 'block' : 'fixed',
+                    top: 90,
+                    right: 1,
+                    zIndex: 1200,
+                    border: `2px solid ${theme.palette.divider}`,
+                    boxShadow: theme.shadows[20],
+                    pb: '2rem',
+                  }
+                : {
+                    mt: '5rem',
+                  }
+            }
           >
             <CardMedia sx={{ height: 350 }} image={wahab} title="Video" />
             <CardContent>
