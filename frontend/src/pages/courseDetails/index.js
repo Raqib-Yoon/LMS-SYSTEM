@@ -755,6 +755,9 @@ const CourseDetailPage = () => {
                     pb: '2rem',
                   }
                 : {
+                  border: `2px solid ${theme.palette.divider}`,
+                  boxShadow: theme.shadows[20],
+                  pb: '2rem',
                     mt: '5rem',
                   }
             }
