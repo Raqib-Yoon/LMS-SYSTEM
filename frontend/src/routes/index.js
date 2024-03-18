@@ -27,6 +27,7 @@ export default function Router() {
       children: [
         { element: <HomePage />, index: true },
         { path: PATH_PAGE.CourseDetails, element: <CourseDetail /> },
+        { path: PATH_PAGE.SearchResult, element: <SearchResult /> },
       ],
     },
   ]);
@@ -35,3 +36,4 @@ export default function Router() {
 // MAIN
 const HomePage = Loadable(lazy(() => import('../pages/Home')));
 const CourseDetail = Loadable(lazy(() => import('../pages/courseDetails')));
+const SearchResult = Loadable(lazy(() => import('../pages/searchResult')));

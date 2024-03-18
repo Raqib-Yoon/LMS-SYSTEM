@@ -10,6 +10,7 @@ export const PATH_AUTH = {};
 export const PATH_PAGE = {
   landingPage: path(PATH_ROOT, ''),
   CourseDetails: path(PATH_ROOT, '/course-details'),
+  SearchResult: path(PATH_ROOT, '/search-result'),
 };
 
 // admin
